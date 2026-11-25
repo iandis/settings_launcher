@@ -1,3 +1,7 @@
+## 0.0.4
+
+- Support Swift Package Manager on iOS: the sources and the privacy manifest move to `ios/settings_launcher/Sources/settings_launcher`, with a `Package.swift` that depends on Flutter's `FlutterFramework` package; CocoaPods builds keep working
+
 ## 0.0.3
 
 - Align the Android and iOS build setup with the Flutter 3.47 plugin template: namespace, compileSdk 36, minSdk 24, JVM 17 for Java and Kotlin, AGP 9.1.0 and Kotlin 2.4.0 in the buildscript, and iOS 15.0
