@@ -1,3 +1,8 @@
+## 0.0.5
+
+- Android: `SettingsType.biometrics` opens the screen for adding a fingerprint or face (`Settings.ACTION_BIOMETRIC_ENROLL`, any biometric of at least `BIOMETRIC_WEAK`, on Android 11 and later; `ACTION_FINGERPRINT_ENROLL` on Android 9 and 10) instead of the security settings. Where that screen doesn't open, it falls back to the security settings, then to the main settings, as before
+- Replace the template's Android unit test, which tested a `getPlatformVersion` call the plugin never had, with tests of the screens `biometrics` tries
+
 ## 0.0.4
 
 - Support Swift Package Manager on iOS: the sources and the privacy manifest move to `ios/settings_launcher/Sources/settings_launcher`, with a `Package.swift` that depends on Flutter's `FlutterFramework` package; CocoaPods builds keep working

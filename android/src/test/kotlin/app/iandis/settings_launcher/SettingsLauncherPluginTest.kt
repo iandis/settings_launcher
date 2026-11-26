@@ -1,27 +1,46 @@
 package app.iandis.settings_launcher
 
-import io.flutter.plugin.common.MethodCall
-import io.flutter.plugin.common.MethodChannel
+import android.os.Build
+import android.provider.Settings
 import kotlin.test.Test
-import org.mockito.Mockito
+import kotlin.test.assertEquals
 
 /*
- * This demonstrates a simple unit test of the Kotlin portion of this plugin's implementation.
- *
- * Once you have built the plugin's example app, you can run these tests from the command
- * line by running `./gradlew testDebugUnitTest` in the `example/android/` directory, or
- * you can run them directly from IDEs that support JUnit such as Android Studio.
+ * Run with `./gradlew :settings_launcher:testDebugUnitTest` in `example/android/` (after `flutter build apk
+ * --config-only` in `example/`, which writes the Gradle wrapper).
  */
-
+@Suppress("DEPRECATION") // ACTION_FINGERPRINT_ENROLL
 internal class SettingsLauncherPluginTest {
   @Test
-  fun onMethodCall_getPlatformVersion_returnsExpectedValue() {
-    val plugin = SettingsLauncherPlugin()
+  fun biometricSettingsActions_android11AndLater_addsABiometricFirst() {
+    for (sdkInt in listOf(Build.VERSION_CODES.R, Build.VERSION_CODES.TIRAMISU, 36)) {
+      assertEquals(
+        listOf(Settings.ACTION_BIOMETRIC_ENROLL, Settings.ACTION_SECURITY_SETTINGS, Settings.ACTION_SETTINGS),
+        biometricSettingsActions(sdkInt),
+        "API $sdkInt",
+      )
+    }
+  }
 
-    val call = MethodCall("getPlatformVersion", null)
-    val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
-    plugin.onMethodCall(call, mockResult)
+  @Test
+  fun biometricSettingsActions_android9And10_addsAFingerprintFirst() {
+    for (sdkInt in listOf(Build.VERSION_CODES.P, Build.VERSION_CODES.Q)) {
+      assertEquals(
+        listOf(Settings.ACTION_FINGERPRINT_ENROLL, Settings.ACTION_SECURITY_SETTINGS, Settings.ACTION_SETTINGS),
+        biometricSettingsActions(sdkInt),
+        "API $sdkInt",
+      )
+    }
+  }
 
-    Mockito.verify(mockResult).success("Android " + android.os.Build.VERSION.RELEASE)
+  @Test
+  fun biometricSettingsActions_beforeAndroid9_opensTheSecuritySettings() {
+    for (sdkInt in listOf(Build.VERSION_CODES.N, Build.VERSION_CODES.O_MR1)) {
+      assertEquals(
+        listOf(Settings.ACTION_SECURITY_SETTINGS, Settings.ACTION_SETTINGS),
+        biometricSettingsActions(sdkInt),
+        "API $sdkInt",
+      )
+    }
   }
 }

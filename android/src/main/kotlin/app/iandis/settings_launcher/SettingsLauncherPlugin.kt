@@ -2,7 +2,8 @@ package app.iandis.settings_launcher
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
+import android.hardware.biometrics.BiometricManager
+import android.os.Build
 import android.provider.Settings
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -37,49 +38,47 @@ class SettingsLauncherPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
         val asAnotherTask = call.argument<Boolean>("asAnotherTask") ?: false
         when (call.argument<String>("type")) {
-            "biometrics" -> _openSettings(Settings.ACTION_SECURITY_SETTINGS, result, asAnotherTask)
+            "biometrics" -> _openFirst(biometricSettingsActions(Build.VERSION.SDK_INT), result, asAnotherTask)
             else -> result.notImplemented()
         }
     }
 
     /**
-     * Open the settings panel for the given url.
+     * Opens the first of [actions] that the phone has an activity for, and answers [result] once.
      */
-    private fun _openSettings(
-            url: String,
+    private fun _openFirst(
+            actions: List<String>,
             result: Result,
             asAnotherTask: Boolean = false,
     ) {
-        try {
-            val intent = Intent(url)
-            if (asAnotherTask) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        for (action in actions) {
+            try {
+                val intent = _intentFor(action)
+                if (asAnotherTask) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+
+                this._activity?.startActivity(intent)
+                break
+            } catch (e: Exception) {
+                // No screen for this action on this phone (ActivityNotFoundException), or it isn't open to other apps
+                // (SecurityException): try the next one.
             }
-
-            this._activity?.startActivity(intent)
-            result.success(null)
-        } catch (e: Exception) {
-            // If the Activity fails to start, show the app settings instead.
-            _openDeviceSettings(result, asAnotherTask)
-        }
-    }
-
-    /**
-     * Open the device settings.
-     */
-    private fun _openDeviceSettings(result: Result, asAnotherTask: Boolean = false) {
-        try {
-            val intent = Intent(Settings.ACTION_SETTINGS)
-            if (asAnotherTask) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-
-            this._activity?.startActivity(intent)
-        } catch (e: Exception) {
-            // no-op
         }
 
         result.success(null)
+    }
+
+    private fun _intentFor(action: String): Intent {
+        val intent = Intent(action)
+        if (action == Settings.ACTION_BIOMETRIC_ENROLL && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // The strength local_auth checks: any fingerprint or face that it accepts can be added here.
+            intent.putExtra(
+                    Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+                    BiometricManager.Authenticators.BIOMETRIC_WEAK,
+            )
+        }
+        return intent
     }
 
 
@@ -98,4 +97,19 @@ class SettingsLauncherPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onDetachedFromActivity() {
         this._activity = null
     }
+}
+
+/**
+ * The screens the `biometrics` type tries, in order, on a phone with [sdkInt]: where the user adds a fingerprint or
+ * face (Android 11 and later; a fingerprint on Android 9 and 10), else the security settings, where the phone's
+ * biometrics are listed, else the main settings.
+ */
+@Suppress("DEPRECATION") // ACTION_FINGERPRINT_ENROLL, which Android 9 and 10 still need.
+internal fun biometricSettingsActions(sdkInt: Int): List<String> = buildList {
+    when {
+        sdkInt >= Build.VERSION_CODES.R -> add(Settings.ACTION_BIOMETRIC_ENROLL)
+        sdkInt >= Build.VERSION_CODES.P -> add(Settings.ACTION_FINGERPRINT_ENROLL)
+    }
+    add(Settings.ACTION_SECURITY_SETTINGS)
+    add(Settings.ACTION_SETTINGS)
 }
